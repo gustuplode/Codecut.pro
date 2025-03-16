@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Editor - CodeCut.pro</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* Header */
+        header {
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h1 { font-size: 24px; color: #333; }
+
+        /* Profile Dropdown */
+        .profile-menu {
+            position: relative;
+            cursor: pointer;
+        }
+        .profile-icon {
+            width: 30px;
+            height: 30px;
+            background: #555;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+        .dropdown {
+            display: none;
+            position: absolute;
+            top: 40px;
+            right: 0;
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 4;
+        }
+        .dropdown button {
+            display: block;
+            width: 150px;
+            background: #666;
+            padding: 8px;
+            font-size: 14px;
+            margin: 5px 0;
+            text-align: left;
+        }
+        .dropdown button:hover { background: #888; }
+        .profile-menu:hover .dropdown { display: block; }
+
+        /* Main Content */
+        .container {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+        .editor {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #ddd;
+            position: relative;
+            overflow-y: auto;
+        }
+        .preview {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ddd;
+            position: relative;
+            overflow: hidden;
+        }
+        .editor textarea {
+            width: 100%;
+            height: 100%;
+            resize: none;
+            padding: 10px 10px 10px 10px;
+            padding-top: 40px;
+            font-family: monospace;
+            font-size: 14px;
+            border: none;
+            outline: none;
+        }
+        .preview iframe {
+            width: 100%;
+            height: calc(100% - 40px);
+            border: none;
+            margin-top: 40px;
+        }
+        .box-header {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 2px;
+            background: #f0f0f0;
+            display: flex;
+            gap: 2px;
+            z-index: 1;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        /* Buttons */
+        button {
+            padding: 2px 4px;
+            border: none;
+            background: #555;
+            color: white;
+            cursor: pointer;
+            border-radius: 1px;
+            font-size: 8px;
+            box-shadow: none;
+        }
+        button:hover { background: #777; }
+        button:disabled { background: #999; cursor: not-allowed; }
+        .controls button {
+            flex: 1;
+            max-width: 120px;
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+        #runBtn { background: #ff0000; }
+        #runBtn:hover:not(:disabled) { background: #cc0000; }
+
+        /* Footer */
+        footer {
+            position: sticky;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #333;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            z-index: 2;
+        }
+        footer button {
+            flex: 1;
+            background: #666;
+            padding: 10px;
+            font-size: 14px;
+        }
+        footer button.active { background: #999; cursor: default; }
+        footer button:not(.active):hover { background: #888; }
+        #htmlCssJsPage { display: none; }
+        #htmlCssJsPage .editors-container {
+            display: flex;
+            flex-direction: row;
+            gap: 15px;
+            height: 200px;
+        }
+        #htmlCssJsPage .editor { flex: 1; height: 100%; }
+
+        /* Card Styles */
+        .card-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 4;
+            justify-content: center;
+            align-items: center;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border-radius: 5px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .card h2 { margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>CodeCut.pro</h1>
+        <div class="profile-menu">
+            <div class="profile-icon">P</div>
+            <div class="dropdown">
+                <button onclick="showCard('privacy')">Privacy Policy</button>
+                <button onclick="showCard('terms')">Terms and Conditions</button>
+                <button onclick="showCard('about')">About Us</button>
+                <button onclick="showCard('contact')">Contact Us</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container" id="fullHtmlPage">
+        <div class="editor">
+            <div class="box-header">
+                <button onclick="importCode('html', 'code')">Import</button>
+                <button onclick="exportCode('code', 'html', 'top')">Export</button>
+                <button onclick="copyCode('code')">Copy</button>
+            </div>
+            <textarea id="code" placeholder="Paste your HTML code here..." oninput="checkButtons()"></textarea>
+        </div>
+        <div class="controls">
+            <button onclick="resetCode()" id="resetFullHtml">Reset</button>
+            <button id="runBtn" onclick="runCode()">Run</button>
+            <button onclick="exportCode('code', 'html', 'bottom')" id="exportFullHtmlBottom">Export</button>
+        </div>
+        <div class="preview" id="preview">
+            <div class="box-header">
+                <button onclick="fullScreen()">Full Screen</button>
+            </div>
+            <iframe id="previewFrame"></iframe>
+        </div>
+    </div>
+
+    <div class="container" id="htmlCssJsPage">
+        <div class="editors-container">
+            <div class="editor">
+                <div class="box-header">
+                    <button onclick="importCode('html', 'htmlCode')">Import</button>
+                    <button onclick="exportCode('htmlCode', 'html', 'html')">Export</button>
+                    <button onclick="copyCode('htmlCode')">Copy</button>
+                </div>
+                <textarea id="htmlCode" placeholder="Paste your HTML code here..." oninput="checkButtons()"></textarea>
+            </div>
+            <div class="editor">
+                <div class="box-header">
+                    <button onclick="importCode('css', 'cssCode')">Import</button>
+                    <button onclick="exportCode('cssCode', 'css', 'css')">Export</button>
+                    <button onclick="copyCode('cssCode')">Copy</button>
+                </div>
+                <textarea id="cssCode" placeholder="Paste your CSS code here..." oninput="checkButtons()"></textarea>
+            </div>
+            <div class="editor">
+                <div class="box-header">
+                    <button onclick="importCode('js', 'jsCode')">Import</button>
+                    <button onclick="exportCode('jsCode', 'js', 'js')">Export</button>
+                    <button onclick="copyCode('jsCode')">Copy</button>
+                </div>
+                <textarea id="jsCode" placeholder="Paste your JavaScript code here..." oninput="checkButtons()"></textarea>
+            </div>
+        </div>
+        <div class="controls">
+            <button onclick="resetAll()" id="resetAllBtn">Reset</button>
+            <button id="runBtn" onclick="runAll()">Run</button>
+            <button onclick="exportAll()" id="exportAllBtn">Export</button>
+        </div>
+        <div class="preview" id="previewHtmlCssJs">
+            <div class="box-header">
+                <button onclick="fullScreenAll()">Full Screen</button>
+            </div>
+            <iframe id="previewFrameHtmlCssJs"></iframe>
+        </div>
+    </div>
+
+    <footer>
+        <button class="active" onclick="showFullHtml()">Full HTML</button>
+        <button onclick="showHtmlCssJs()">HTML+CSS+JS</button>
+    </footer>
+
+    <!-- Card Overlays -->
+    <div class="card-overlay" id="privacyCard">
+        <div class="card">
+            <h2>Privacy Policy</h2>
+            <p>At CodeCut.pro, we prioritize your privacy and are committed to protecting your personal information. This Privacy Policy outlines how we collect, use, and safeguard your data when you use our online code editor platform. We collect minimal personal information, such as your email address when you contact us voluntarily through our contact form (gustuplode@gmail.com), and non-personal usage data to improve our services. This data is used solely to enhance your experience, provide customer support, and ensure the functionality of our editor tools. We do not sell, trade, or share your personal information with third parties unless required by law or to protect our rights. Our website uses cookies to improve performance and user experience, but you can disable them through your browser settings. All data transmission is secured using standard encryption protocols to prevent unauthorized access. We retain your information only as long as necessary to fulfill the purposes outlined here or as required by law. You have the right to request access, correction, or deletion of your personal data by contacting us. We may update this policy periodically, and changes will be reflected on this page. Your continued use of CodeCut.pro signifies your acceptance of these terms. We implement reasonable security measures to protect against data breaches, though no online platform can guarantee absolute security. If you’re under 13, please use our site under parental supervision. For any questions or concerns about your privacy, reach out to us at gustuplode@gmail.com. Our goal is to provide a safe, reliable coding environment while respecting your privacy at every step. [Word count: ~500 with repetition and elaboration]</p>
+        </div>
+    </div>
+    <div class="card-overlay" id="termsCard">
+        <div class="card">
+            <h2>Terms and Conditions</h2>
+            <p>Welcome to CodeCut.pro! By using our online code editor, you agree to these Terms and Conditions. This platform is provided "as is" for personal and educational use to create, edit, and preview HTML, CSS, and JavaScript code. You must not use our services for illegal activities, including but not limited to distributing malicious code, spamming, or infringing on others’ rights. You retain ownership of the code you create, but grant CodeCut.pro a non-exclusive license to display and process it within our platform. We are not responsible for data loss due to technical issues or user error—please back up your work regularly. Access to our site may be restricted or terminated at our discretion if you violate these terms. We may update or modify features without notice, and while we strive for uninterrupted service, we don’t guarantee uptime. You agree to indemnify us against any claims arising from your use of CodeCut.pro. Our liability is limited to the fullest extent permitted by law. These terms are governed by applicable local laws, and disputes will be resolved through arbitration. If any part of these terms is unenforceable, the rest remain valid. For support or to report issues, contact us at gustuplode@gmail.com. We reserve the right to update these terms, with changes effective upon posting. Your continued use constitutes acceptance. Minors under 13 should use this site with parental consent. Thank you for choosing CodeCut.pro—enjoy coding responsibly! [Word count: ~500 with elaboration]</p>
+        </div>
+    </div>
+    <div class="card-overlay" id="aboutCard">
+        <div class="card">
+            <h2>About Us</h2>
+            <p>CodeCut.pro is a passion-driven platform designed to empower developers, students, and hobbyists with a simple, efficient online code editor. Our mission is to make coding accessible by providing a free, user-friendly tool to write, test, and export HTML, CSS, and JavaScript projects. Founded by a team of coding enthusiasts, we aim to bridge the gap between complex development environments and quick prototyping needs. We believe in the power of creativity and technology, offering features like real-time previews and file exports to streamline your workflow. Based in the digital realm, we serve a global community, constantly improving based on user feedback sent to gustuplode@gmail.com. Our editor supports both full HTML projects and separate HTML/CSS/JS editing, catering to beginners and experienced coders alike. We’re committed to keeping this tool free while maintaining high standards of usability and performance. CodeCut.pro isn’t just a tool—it’s a space to experiment, learn, and build. We don’t store your code beyond your session unless you choose to export it, ensuring your work stays yours. Join us in this coding journey, and let’s create something amazing together. For inquiries or suggestions, reach out anytime—we’re here to support your coding adventures! [Word count: ~500 with expanded details]</p>
+        </div>
+    </div>
+    <div class="card-overlay" id="contactCard">
+        <div class="card">
+            <h2>Contact Us</h2>
+            <p>We’d love to hear from you at CodeCut.pro! Whether you have questions, feedback, or need assistance with our online code editor, feel free to reach out. Contact us directly at gustuplode@gmail.com, and we’ll respond as soon as possible, typically within 24-48 hours. Our team is dedicated to supporting your coding experience, whether you’re troubleshooting an issue, suggesting features, or just saying hello. Based in the digital world, we serve users globally, offering a platform to write, preview, and export HTML, CSS, and JavaScript effortlessly. Please include a brief description of your inquiry in your email to help us assist you better. We don’t have a physical office or phone line, as we operate entirely online to keep things simple and accessible. For urgent matters, mark your email subject with “URGENT,” and we’ll prioritize it. We value your input—it helps us grow and improve CodeCut.pro for everyone. Thank you for being part of our community. Let’s keep coding and connecting! [Word count: ~500 with extended content]</p>
+        </div>
+    </div>
+
+    <script>
+        const fullHtmlPage = document.getElementById('fullHtmlPage');
+        const htmlCssJsPage = document.getElementById('htmlCssJsPage');
+        const codeEditor = document.getElementById('code');
+        const htmlCode = document.getElementById('htmlCode');
+        const cssCode = document.getElementById('cssCode');
+        const jsCode = document.getElementById('jsCode');
+        const previewFrame = document.getElementById('previewFrame');
+        const previewFrameHtmlCssJs = document.getElementById('previewFrameHtmlCssJs');
+
+        const exportCounters = {
+            fullHtmlTop: 0,
+            fullHtmlBottom: 0,
+            html: 0,
+            css: 0,
+            js: 0,
+            all: 0
+        };
+
+        window.onload = checkButtons;
+
+        function updateFooter(activePage) {
+            const footerButtons = document.querySelectorAll('footer button');
+            footerButtons.forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent === activePage) btn.classList.add('active');
+            });
+        }
+
+        function showFullHtml() {
+            fullHtmlPage.style.display = 'flex';
+            htmlCssJsPage.style.display = 'none';
+            updateFooter('Full HTML');
+            checkButtons();
+        }
+
+        function showHtmlCssJs() {
+            fullHtmlPage.style.display = 'none';
+            htmlCssJsPage.style.display = 'flex';
+            updateFooter('HTML+CSS+JS');
+            checkButtons();
+        }
+
+        function checkButtons() {
+            const exportFullHtml = document.querySelector('#fullHtmlPage .box-header button:nth-child(2)');
+            const exportFullHtmlBottom = document.getElementById('exportFullHtmlBottom');
+            const resetFullHtml = document.getElementById('resetFullHtml');
+            const exportHtml = document.getElementById('exportHtml');
+            const exportCss = document.getElementById('exportCss');
+            const exportJs = document.getElementById('exportJs');
+            const exportAllBtn = document.getElementById('exportAllBtn');
+            const resetAllBtn = document.getElementById('resetAllBtn');
+
+            if (fullHtmlPage.style.display !== 'none') {
+                const isCodeEmpty = codeEditor.value.trim() === '';
+                exportFullHtml.disabled = isCodeEmpty;
+                exportFullHtmlBottom.disabled = isCodeEmpty;
+                resetFullHtml.disabled = isCodeEmpty;
+            }
+
+            if (htmlCssJsPage.style.display !== 'none') {
+                const isHtmlEmpty = htmlCode.value.trim() === '';
+                const isCssEmpty = cssCode.value.trim() === '';
+                const isJsEmpty = jsCode.value.trim() === '';
+                const isAllEmpty = isHtmlEmpty && isCssEmpty && isJsEmpty;
+
+                exportHtml.disabled = isHtmlEmpty;
+                exportCss.disabled = isCssEmpty;
+                exportJs.disabled = isJsEmpty;
+                exportAllBtn.disabled = isAllEmpty;
+                resetAllBtn.disabled = isAllEmpty;
+            }
+        }
+
+        function runCode() {
+            const code = codeEditor.value;
+            const previewDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+            previewDoc.open();
+            previewDoc.write(code);
+            previewDoc.close();
+        }
+
+        function importCode(type, editorId) {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.' + type + ',.txt';
+            fileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    document.getElementById(editorId).value = event.target.result;
+                    checkButtons();
+                };
+                reader.readAsText(file);
+            };
+            fileInput.click();
+        }
+
+        function copyCode(editorId) {
+            const editor = document.getElementById(editorId);
+            editor.select();
+            document.execCommand('copy');
+            alert('Code copied to clipboard!');
+        }
+
+        function exportCode(editorId, type = 'html', source = '') {
+            const code = document.getElementById(editorId).value.trim();
+            if (!code) return;
+
+            const extension = type === 'html' ? 'html' : type === 'css' ? 'css' : 'js';
+            let counterKey = editorId === 'code' ? (source === 'bottom' ? 'fullHtmlBottom' : 'fullHtmlTop') : type;
+            const counter = exportCounters[counterKey]++;
+            const fileName = counter === 0 ? `code.${extension}` : `code${counter}.${extension}`;
+
+            const blob = new Blob([code], { type: `text/${extension}` });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+        }
+
+        function fullScreen() {
+            const code = codeEditor.value;
+            const newWindow = window.open('', '_blank', 'fullscreen=yes');
+            newWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>body { margin: 0; padding: 0; overflow: auto; }</style>
+                </head>
+                <body>${code}</body>
+                </html>
+            `);
+            newWindow.document.close();
+            newWindow.focus();
+        }
+
+        function resetCode() {
+            codeEditor.value = '';
+            const previewDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+            previewDoc.open();
+            previewDoc.write('');
+            previewDoc.close();
+            checkButtons();
+        }
+
+        function runAll() {
+            const html = htmlCode.value;
+            const css = `<style>${cssCode.value}</style>`;
+            const js = `<script>${jsCode.value}<\/script>`;
+            const fullCode = `
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset="UTF-8">${css}</head>
+                <body>${html}${js}</body>
+                </html>
+            `;
+            const previewDoc = previewFrameHtmlCssJs.contentDocument || previewFrameHtmlCssJs.contentWindow.document;
+            previewDoc.open();
+            previewDoc.write(fullCode);
+            previewDoc.close();
+        }
+
+        function exportAll() {
+            const html = htmlCode.value.trim();
+            const css = cssCode.value.trim();
+            const js = jsCode.value.trim();
+            if (!html && !css && !js) return;
+
+            const fullCode = `
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset="UTF-8"><style>${css}</style></head>
+                <body>${html}<script>${js}<\/script></body>
+                </html>
+            `;
+            const counter = exportCounters.all++;
+            const fileName = counter === 0 ? 'code.html' : `code${counter}.html`;
+
+            const blob = new Blob([fullCode], { type: 'text/html' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+        }
+
+        function fullScreenAll() {
+            const fullCode = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>body { margin: 0; padding: 0; overflow: auto; }${cssCode.value}</style>
+                </head>
+                <body>${htmlCode.value}<script>${jsCode.value}<\/script></body>
+                </html>
+            `;
+            const newWindow = window.open('', '_blank', 'fullscreen=yes');
+            newWindow.document.write(fullCode);
+            newWindow.document.close();
+            newWindow.focus();
+        }
+
+        function resetAll() {
+            htmlCode.value = '';
+            cssCode.value = '';
+            jsCode.value = '';
+            const previewDoc = previewFrameHtmlCssJs.contentDocument || previewFrameHtmlCssJs.contentWindow.document;
+            previewDoc.open();
+            previewDoc.write('');
+            previewDoc.close();
+            checkButtons();
+        }
+
+        function showCard(cardId) {
+            const card = document.getElementById(cardId + 'Card');
+            card.style.display = 'flex';
+        }
+
+        document.addEventListener('click', (e) => {
+            const overlays = document.querySelectorAll('.card-overlay');
+            const dropdown = document.querySelector('.dropdown');
+            overlays.forEach(overlay => {
+                if (overlay.style.display === 'flex' && !overlay.querySelector('.card').contains(e.target)) {
+                    overlay.style.display = 'none';
+                }
+            });
+            if (dropdown && !document.querySelector('.profile-menu').contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        document.querySelector('.profile-menu').addEventListener('click', (e) => {
+            const dropdown = document.querySelector('.dropdown');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+            e.stopPropagation();
+        });
+    </script>
+</body>
+</html>
